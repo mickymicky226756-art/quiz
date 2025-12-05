@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agro-Chem Quiz - ሽልማት መድረክ</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <style>
+        /* አጠቃላይ የገጽ ፎርማት */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #1e7e34; /* ጥቁር አረንጓዴ ዳራ */
+            transition: all 0.3s ease;
+        }
+
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 750px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #1e7e34;
+            border-bottom: 2px solid #1e7e34;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+        
+        h3 {
+             color: #28a745;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"], input[type="password"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #1e7e34;
+        }
+
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* የተጠቃሚ ዳሽቦርድ ስታይል */
+        #user-dashboard {
+            display: none;
+        }
+        
+        /* የማስታወቂያ ክፍል */
+        #promotion-area {
+            background-color: #f0fff0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 5px solid #28a745;
+            text-align: left;
+        }
+        
+        #promotion-area h3 {
+            margin-top: 0;
+            color: #1e7e34;
+        }
+        #promotion-area p {
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        /* የጥያቄው ክፍል */
+        #current-quiz {
+            border: 2px dashed #28a745;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        #current-quiz h3 {
+            color: #28a745;
+            font-size: 1.5em;
+        }
+        
+        /* ሽልማት መቀበያ ቅጽ */
+        #claim-prize-area {
+            background-color: #ffe0b2; /* Light Orange */
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        #claim-prize-area input {
+            width: calc(100% - 22px);
+            margin-bottom: 10px;
+        }
+        #claim-prize-area button {
+            background-color: #ff9800;
+        }
+
+        .subtle-link {
+            font-size: 0.8em;
+            color: #aaa;
+            cursor: pointer;
+            margin-top: 20px;
+            display: block;
+        }
+
+        /* የአድሚን ዳሽቦርድ ስታይል */
+        #admin-dashboard {
+            display: none;
+        }
+
+        #answers-list {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .answer-item {
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .answer-details {
+            flex-grow: 1;
+        }
+
+        .answer-details p {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        
+        .answer-item button {
+            background-color: #ffc107;
+            color: #333;
+            padding: 5px 10px;
+        }
+
+        .answer-item button:hover {
+            background-color: #e0b400;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="admin-login-area">
+            <h2>አድሚን መግቢያ</h2>
+            <div class="form-group">
+                <label for="admin-password">የይለፍ ቃል:</label>
+                <input type="password" id="admin-password" placeholder="የይለፍ ቃል ያስገቡ">
+            </div>
+            <button id="admin-login-btn">መግባት</button>
+            <p id="admin-login-message" class="alert alert-error" style="display: none;"></p>
+            <a class="subtle-link" onclick="showPage('user-dashboard')">ወደ ዋናው ገጽ ተመለስ</a>
+        </div>
+
+        <div id="user-dashboard">
+            <h2>የ Agro-Chem Quiz ሽልማት መድረክ</h2>
+            
+            <div id="promotion-area">
+                <h3>💰 ለበለጠ ገቢ የአግሮ ኬም ኢንቨስትመንት ምርጫዎ!</h3>
+                <p>በግብርና ኬሚካል ዘርፍ ኢንቨስት በማድረግ በየቀኑ ትርፍ ያግኙ! አስተማማኝ እና አዋጭ የሆነውን የአግሮ ኬም መድረክ ይቀላቀሉ።</p>
+                <p>በትንሹ 500 ብር ኢንቨስት በማድረግ እስከ **9% ዕለታዊ ትርፍ** ማግኘት ይጀምሩ። አሁን ይመዝገቡና የፋይናንስ ነፃነት መንገድ ይጀምሩ!</p>
+            </div>
+            
+            <div id="current-quiz">
+                <h3 id="question-text">አዲስ ጥያቄ በመጠበቅ ላይ...</h3>
+                <p id="quiz-status" class="alert alert-success">ጥያቄው በየምሽቱ ከ2:30 እስከ 3:00 ሰዓት ይቀርባል።</p>
+            </div>
+            
+            <div id="quiz-interaction-area">
+                
+                <div id="answer-submission-form" style="display: none;">
+                    <form id="submit-answer-form">
+                        <div class="form-group">
+                            <label for="user-answer">መልስዎ:</label>
+                            <input type="text" id="user-answer" placeholder="መልስዎን እዚህ ያስገቡ" required>
+                        </div>
+                        <button type="submit">መልስ ላክ</button>
+                        <p id="answer-message" class="alert" style="display: none;"></p>
+                    </form>
+                </div>
+                
+                <p id="waiting-message" class="alert" style="display: none;"></p>
+
+                <div id="claim-prize-area" style="display: none;">
+                    <h3>🎉 እንኳን ደስ አለዎት! መልስዎ ተረጋግጧል!</h3>
+                    <p>ሽልማትዎን 20 ብር ለማግኘት፣ በአግሮ ኬም የተመዘገቡበትን ስልክ ቁጥር ያስገቡ።</p>
+                    <form id="claim-form">
+                        <input type="text" id="claim-phone" placeholder="09XXXXXXXX" required pattern="[0-9]{10}">
+                        <button type="submit">20 ብር ተሸለመኝ</button>
+                        <p id="claim-message" class="alert" style="display: none;"></p>
+                    </form>
+                </div>
+            </div>
+            
+            <a class="subtle-link" onclick="showPage('admin-login-area')">አድሚን መግቢያ</a>
+        </div>
+
+        <div id="admin-dashboard">
+            <h2>አድሚን ዳሽቦርድ</h2>
+            <button id="admin-logout-btn" style="float: right; background-color: #dc3545;">ውጣ</button>
+            
+            <div style="clear: both;">
+                <h3>አዲስ ጥያቄ ይፍጠሩ</h3>
+                <form id="create-quiz-form">
+                    <div class="form-group">
+                        <label for="new-question">ጥያቄ:</label>
+                        <textarea id="new-question" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="correct-answer">ትክክለኛ መልስ:</label>
+                        <input type="text" id="correct-answer" required>
+                    </div>
+                    <button type="submit">ጥያቄ ለጥፍ</button>
+                    <p id="question-post-message" class="alert" style="display: none;"></p>
+                </form>
+            </div>
+            
+            <hr style="margin: 30px 0;">
+            <h3>የተላኩ መልሶች ዝርዝር</h3>
+            <div id="answers-list">
+                <p>ምንም መልስ አልተላከም...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ************************** 1. Firebase Configuration **************************
+        const firebaseConfig = {
+            apiKey: "AIzaSyDu7AqPVMcvSR-hA6VO7zfVCd9XhJvQFcs",
+            authDomain: "mmmm-c2cc3.firebaseapp.com",
+            databaseURL: "https://mmmm-c2cc3-default-rtdb.firebaseio.com",
+            projectId: "mmmm-c2cc3",
+            storageBucket: "mmmm-c2cc3.firebasestorage.app",
+            messagingSenderId: "1064370711409",
+            appId: "1:1064370711409:web:05787d6231bc721c6aa4d0",
+            measurementId: "G-MZ7FM1D607"
+        };
+        
+        // Firebase አስጀምር
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        
+        // ************************** 2. Global Variables and Setup **************************
+        const ADMIN_PASSWORD = 'agrochemadmin2025'; // የአድሚን የይለፍ ቃል
+        const PRIZE_AMOUNT = 20; // የሚሰጠው የሽልማት ብር
+        
+        let currentQuestion = null; 
+        
+        // Local Storageን በመጠቀም የአሁኑን የተጠቃሚ መልስ መለያ ቁጥር መያዝ
+        let myAnswerKey = localStorage.getItem('myAnswerKey'); 
+        // መልሱ የተላከበትን የጥያቄ መለያ ቁጥር መያዝ
+        let lastQuestionId = localStorage.getItem('lastQuestionId'); 
+        
+        const adminLoginArea = document.getElementById('admin-login-area');
+        const userDashboard = document.getElementById('user-dashboard');
+        const adminDashboard = document.getElementById('admin-dashboard');
+
+        // ገጾችን የሚቀያይር ተግባር
+        function showPage(pageId) {
+            adminLoginArea.style.display = 'none';
+            userDashboard.style.display = 'none';
+            adminDashboard.style.display = 'none';
+            
+            const page = document.getElementById(pageId);
+            if (page) {
+                page.style.display = 'block';
+            }
+        }
+
+        // ************************** 3. Admin Logic **************************
+        
+        // Admin Login
+        document.getElementById('admin-login-btn').addEventListener('click', () => {
+            const password = document.getElementById('admin-password').value;
+            const messageEl = document.getElementById('admin-login-message');
+            
+            if (password === ADMIN_PASSWORD) {
+                sessionStorage.setItem('isAdminLoggedIn', 'true');
+                showPage('admin-dashboard');
+                messageEl.style.display = 'none';
+                displayAnswers(); 
+            } else {
+                messageEl.textContent = 'የይለፍ ቃልዎ ትክክል አይደለም።';
+                messageEl.style.display = 'block';
+            }
+        });
+
+        // Admin Logout
+        document.getElementById('admin-logout-btn').addEventListener('click', () => {
+            sessionStorage.removeItem('isAdminLoggedIn');
+            showPage('user-dashboard');
+        });
+
+        // Post Question (ጥያቄ ለጥፍ) 
+        document.getElementById('create-quiz-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const question = document.getElementById('new-question').value.trim();
+            const answer = document.getElementById('correct-answer').value.trim();
+            const messageEl = document.getElementById('question-post-message');
+            
+            if (!question || !answer) {
+                messageEl.className = 'alert alert-error';
+                messageEl.textContent = 'ጥያቄና መልስ ማስገባት ግድ ነው።';
+                messageEl.style.display = 'block';
+                return;
+            }
+            
+            messageEl.style.display = 'none';
+            messageEl.textContent = '';
+
+            // አዲስ የጥያቄ መለያ ቁጥር መፍጠር
+            const newQuestionId = Date.now().toString(); 
+
+            db.ref('quiz/current_question').set({
+                id: newQuestionId, // አዲሱን መለያ ቁጥር ማስገባት
+                question: question,
+                correct_answer: answer.toLowerCase(), 
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                messageEl.className = 'alert alert-success';
+                messageEl.textContent = '✅ ጥያቄው በስኬት ተለጥፏል!';
+                messageEl.style.display = 'block';
+                
+                document.getElementById('new-question').value = '';
+                document.getElementById('correct-answer').value = '';
+                
+                // አዲስ ጥያቄ ሲለጠፍ የድሮ የተጠቃሚ መረጃዎችን ማጽዳት
+                localStorage.removeItem('myAnswerKey');
+                localStorage.setItem('lastQuestionId', newQuestionId);
+                myAnswerKey = null;
+                lastQuestionId = newQuestionId;
+                
+                // የድሮ መልሶችን ማጥፋት
+                db.ref('quiz/answers').remove();
+            }).catch(error => {
+                console.error("Firebase Question Post Error:", error);
+                messageEl.className = 'alert alert-error';
+                messageEl.textContent = `❌ ጥያቄውን መለጠፍ አልተቻለም! ስህተት: ${error.message}.`;
+                messageEl.style.display = 'block';
+            });
+        });
+
+        // መልሱን ትክክል መሆኑን የሚያረጋግጥ ተግባር (Admin)
+        function verifyAnswer(answerKey) {
+            if (!confirm('ይህንን መልስ እንደ ትክክለኛ አረጋግጠው ተጠቃሚው ሽልማት እንዲወስድ ወደ መድረኩ መላክ ይፈልጋሉ?')) {
+                return;
+            }
+            
+            db.ref(`quiz/answers/${answerKey}`).update({
+                is_verified: true,
+                verified_timestamp: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                alert('✅ መልሱ በተሳካ ሁኔታ ተረጋግጧል። ተጠቃሚው አሁን ስልክ ቁጥሩን አስገብቶ ሽልማት ይወስዳል!');
+            }).catch(error => {
+                alert(`❌ ማረጋገጥ አልተቻለም: ${error.message}`);
+                console.error("Verification Error:", error);
+            });
+        }
+
+
+        // መልሶችን በእውነተኛ ጊዜ ማሳየት (Admin)
+        function displayAnswers() {
+            const answersList = document.getElementById('answers-list');
+            
+            db.ref('quiz/answers').on('value', (snapshot) => {
+                answersList.innerHTML = '';
+                if (!snapshot.exists()) {
+                    answersList.innerHTML = '<p>ምንም መልስ አልተላከም...</p>';
+                    return;
+                }
+                
+                snapshot.forEach((childSnapshot) => {
+                    const answerData = childSnapshot.val();
+                    const key = childSnapshot.key;
+                    
+                    const item = document.createElement('div');
+                    item.className = 'answer-item';
+
+                    let adminActionArea = '';
+                    
+                    if (answerData.is_winner) {
+                        // አሸናፊ ከሆነ
+                        item.style.backgroundColor = '#ccffcc'; 
+                        adminActionArea = `<div>** ተሸልሟል! (${answerData.winner_phone}) **</div>`;
+                    } else if (answerData.is_verified) {
+                        // ከተረጋገጠ (ተጠቃሚው ስልኩን እስኪያስተካክል በመጠበቅ)
+                        item.style.backgroundColor = '#fffacd'; 
+                        adminActionArea = `<div>** በመጠባበቅ ላይ (ለተጠቃሚው ተልኳል) **</div>`;
+                    } else {
+                        // አዲስ መልስ (ለማረጋገጥ)
+                        adminActionArea = `<button onclick="verifyAnswer('${key}')">መልሱ ትክክል ነው አረጋግጥ</button>`;
+                    }
+
+                    const date = new Date(answerData.timestamp).toLocaleTimeString('am-ET');
+
+                    item.innerHTML = `
+                        <div class="answer-details">
+                            <p><strong>መልስ:</strong> ${answerData.answer}</p>
+                            <p><strong>የተላከበት ሰዓት:</strong> ${date}</p>
+                            ${answerData.is_winner && answerData.winner_phone ? `<p style="color: green;"><strong>አሸናፊ ስልክ:</strong> ${answerData.winner_phone}</p>` : ''}
+                        </div>
+                        ${adminActionArea}
+                    `;
+                    
+                    // አሸናፊዎችን ወደ ላይ ማድረግ
+                    if (answerData.is_winner || answerData.is_verified) {
+                        answersList.prepend(item);
+                    } else {
+                        answersList.appendChild(item);
+                    }
+                });
+            });
+        }
+        
+        // ************************** 4. User Logic **************************
+
+        // የተጠቃሚውን ዳሽቦርድ ሁኔታ የሚቆጣጠር ተግባር
+        function updateUserQuizState(state) {
+            const quizForm = document.getElementById('answer-submission-form');
+            const waitingMsg = document.getElementById('waiting-message');
+            const claimArea = document.getElementById('claim-prize-area');
+            const currentQuiz = document.getElementById('current-quiz');
+
+            // ሁሉንም ደብቅ
+            quizForm.style.display = 'none';
+            waitingMsg.style.display = 'none';
+            claimArea.style.display = 'none';
+            currentQuiz.style.display = 'block';
+
+            if (state === 'active') {
+                // ጥያቄው አለ፣ መልስ መስጫ ቅጽ አሳይ
+                quizForm.style.display = 'block';
+            } else if (state === 'waiting') {
+                // መልስ ልኳል፣ አድሚን እስኪያረጋግጥ ድረስ ጠብቅ
+                waitingMsg.textContent = '⏱ መልስዎ ተልኳል። አድሚን እስኪፈትሽ ድረስ በዚሁ ገጽ ይጠብቁ...';
+                waitingMsg.className = 'alert alert-error'; 
+                waitingMsg.style.display = 'block';
+            } else if (state === 'claim') {
+                // አድሚን አረጋግጧል፣ የስልክ ቁጥር ቅጽ አሳይ
+                claimArea.style.display = 'block';
+            } else if (state === 'awarded') {
+                 // ሽልማት ተሰጥቷል
+                 waitingMsg.textContent = '🎉 እንኳን ደስ አለዎት! 20 ብር ሂሳብዎ ላይ ገቢ ሆኗል።';
+                 waitingMsg.className = 'alert alert-success'; 
+                 waitingMsg.style.display = 'block';
+            } else if (state === 'inactive') {
+                // ጥያቄ የለም
+                currentQuiz.style.display = 'block';
+            }
+        }
+        
+        // የተጠቃሚውን መልስ ሁኔታ የሚከታተል ተግባር (Firebase Listener)
+        function listenToMyAnswerStatus() {
+            if (!myAnswerKey || !currentQuestion || currentQuestion.id !== lastQuestionId) {
+                return;
+            }
+            
+            // የተጠቃሚውን ልዩ መልስ ቁልፍ ብቻ ማዳመጥ
+            db.ref(`quiz/answers/${myAnswerKey}`).on('value', (snapshot) => {
+                const answerData = snapshot.val();
+                
+                if (!answerData) {
+                    // መልሱ ከተሰረዘ (ለምሳሌ አድሚን አዲስ ጥያቄ ለጥፏል)
+                    localStorage.removeItem('myAnswerKey');
+                    myAnswerKey = null;
+                    if (currentQuestion) {
+                         updateUserQuizState('active');
+                    }
+                    return;
+                }
+
+                if (answerData.is_winner) {
+                    // ተሸልሟል
+                    updateUserQuizState('awarded');
+                } else if (answerData.is_verified) {
+                    // ተረጋግጧል፣ ሽልማት እንዲወስድ ፍቀድ
+                    updateUserQuizState('claim');
+                } else {
+                    // በመጠበቅ ላይ
+                    updateUserQuizState('waiting');
+                }
+            });
+        }
+
+        // መልስ መላክ (User) - ስልክ ቁጥር ተወግዷል
+        document.getElementById('submit-answer-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            if (!currentQuestion) {
+                 alert('ይቅርታ! አሁን ንቁ ጥያቄ የለም።');
+                 return;
+            }
+            
+            const answer = document.getElementById('user-answer').value.trim();
+            const messageEl = document.getElementById('answer-message');
+            
+            // አንድ ጊዜ ብቻ መመለስ እንዲችል መከልከል
+            if (myAnswerKey && currentQuestion.id === lastQuestionId) {
+                messageEl.className = 'alert alert-error';
+                messageEl.textContent = 'መልስዎን አስቀድመው ልከዋል። እባክዎ የአድሚን ማረጋገጫ ይጠብቁ።';
+                messageEl.style.display = 'block';
+                return;
+            }
+            
+            if (!answer) {
+                messageEl.className = 'alert alert-error';
+                messageEl.textContent = 'መልስ ማስገባት አለብዎት።';
+                messageEl.style.display = 'block';
+                return;
+            }
+            
+            messageEl.style.display = 'none';
+            messageEl.textContent = '';
+
+            // መልስ መላክ እና ልዩ መለያ ቁጥር (key) ማግኘት
+            const newAnswerRef = db.ref('quiz/answers').push();
+            newAnswerRef.set({
+                question_id: currentQuestion.id, // ከጥያቄው ጋር ማገናኘት
+                answer: answer,
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                is_verified: false,
+                is_winner: false
+            }).then(() => {
+                // መለያ ቁጥሩን በ Local Storage ማስቀመጥ
+                myAnswerKey = newAnswerRef.key;
+                localStorage.setItem('myAnswerKey', myAnswerKey);
+                localStorage.setItem('lastQuestionId', currentQuestion.id);
+
+                messageEl.className = 'alert alert-success';
+                messageEl.textContent = '✅ መልስዎ በተሳካ ሁኔታ ተልኳል። አድሚን እስኪያረጋግጥ ድረስ ይጠብቁ!';
+                messageEl.style.display = 'block';
+                document.getElementById('user-answer').value = ''; 
+                
+                // ሁኔታውን ወደ መጠበቅ መቀየር
+                updateUserQuizState('waiting'); 
+                
+                // የተላከውን መልስ ሁኔታ መከታተል መጀመር
+                listenToMyAnswerStatus();
+
+            }).catch(error => {
+                messageEl.className = 'alert alert-error';
+                messageEl.textContent = `❌ መልስዎን መላክ አልተቻለም: ${error.message}`;
+                messageEl.style.display = 'block';
+            });
+        });
+        
+        // ሽልማት መቀበያ ቅጽ መላክ (User)
+        document.getElementById('claim-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            if (!myAnswerKey) {
+                alert('ስህተት: ምንም የተረጋገጠ መልስ የለዎትም።');
+                return;
+            }
+            
+            const phone = document.getElementById('claim-phone').value.trim();
+            const messageEl = document.getElementById('claim-message');
+            
+            if (phone.length !== 10 || !/^\d+$/.test(phone)) {
+                messageEl.className = 'alert alert-error';
+                messageEl.textContent = 'እባክዎ ትክክለኛ 10 አሃዝ ስልክ ቁጥር ያስገቡ!';
+                messageEl.style.display = 'block';
+                return;
+            }
+            
+            messageEl.style.display = 'none';
+            messageEl.textContent = '';
+            
+            // 1. ሽልማቱ ቀደም ብሎ መሰጠቱን ማረጋገጥ
+            db.ref(`quiz/answers/${myAnswerKey}`).once('value').then(snapshot => {
+                const answerData = snapshot.val();
+                if (answerData && answerData.is_winner) {
+                    alert('ይህ ሽልማት ቀደም ሲል ተወስዷል።');
+                    updateUserQuizState('awarded');
+                    return;
+                }
+                
+                // 2. ሽልማት መስጠት
+                awardPrizeToUser(phone, myAnswerKey, messageEl);
+                
+            }).catch(error => {
+                messageEl.className = 'alert alert-error';
+                messageEl.textContent = `❌ ስህተት: ${error.message}`;
+                messageEl.style.display = 'block';
+            });
+        });
+
+        // ሽልማቱን ወደ ሂሳብ የሚጨምር ተግባር
+        function awardPrizeToUser(phoneNumber, answerKey, messageEl) {
+            const userRef = db.ref(`users/${phoneNumber}`);
+
+            // ተጠቃሚው መኖሩን ማረጋገጥ
+            userRef.once('value').then(userSnapshot => {
+                if (!userSnapshot.exists()) {
+                    messageEl.className = 'alert alert-error';
+                    messageEl.textContent = `❌ ስህተት: ስልክ ቁጥር ${phoneNumber} በኢንቨስትመንት ዳታቤዝዎ ላይ አልተገኘም። በትክክል መመዝገብዎን ያረጋግጡ።`;
+                    messageEl.style.display = 'block';
+                    return;
+                }
+
+                // 1. የአሁኑን ሂሳብ ማንበብ እና 20 ብር መጨመር (Transaction)
+                userRef.child('balance').transaction((currentBalance) => {
+                    const newBalance = (currentBalance || 0) + PRIZE_AMOUNT;
+                    return newBalance;
+                }, (error, committed, snapshot) => {
+                    if (error) {
+                        messageEl.className = 'alert alert-error';
+                        messageEl.textContent = `❌ የሒሳብ መጨመር ስህተት: ${error.message}`;
+                    } else if (!committed) {
+                        messageEl.className = 'alert alert-error';
+                        messageEl.textContent = '❌ የሒሳብ መጨመር አልተሳካም። ዳግም ይሞክሩ።';
+                    } else {
+                        // 2. በተሳካ ሁኔታ ሲሸለም መልሱን መዝገብ ላይ ምልክት ማድረግ
+                        db.ref(`quiz/answers/${answerKey}`).update({
+                            is_winner: true,
+                            winner_phone: phoneNumber,
+                            awarded_timestamp: firebase.database.ServerValue.TIMESTAMP
+                        }).then(() => {
+                            messageEl.className = 'alert alert-success';
+                            messageEl.textContent = `🎉 እንኳን ደስ አለዎት! ${PRIZE_AMOUNT} ብር ወደ ሂሳብዎ ገቢ ሆኗል!`;
+                            updateUserQuizState('awarded');
+                        }).catch(err => {
+                            messageEl.className = 'alert alert-error';
+                            messageEl.textContent = `⚠️ ሽልማቱ ገብቷል፣ ነገር ግን ሁኔታውን ምልክት ማድረግ አልተቻለም፡ ${err.message}`;
+                            updateUserQuizState('awarded');
+                        });
+                    }
+                    messageEl.style.display = 'block';
+                });
+
+            }).catch(error => {
+                messageEl.className = 'alert alert-error';
+                messageEl.textContent = `❌ የተጠቃሚ ዳታ ማግኘት አልተቻለም: ${error.message}`;
+                messageEl.style.display = 'block';
+            });
+        }
+
+        // ************************** 5. Initialization **************************
+        
+        // ገጹ ሲከፈት የተጠቃሚውን ሁኔታ የሚወስን ተግባር
+        function initializeUserDashboard() {
+            if (!currentQuestion) {
+                updateUserQuizState('inactive'); 
+                return;
+            }
+
+            const storedAnswerKey = localStorage.getItem('myAnswerKey');
+            const storedQuestionId = localStorage.getItem('lastQuestionId');
+
+            if (storedAnswerKey && storedQuestionId === currentQuestion.id) {
+                myAnswerKey = storedAnswerKey;
+                // የማረጋገጫ ሂደቱን ይጀምራል (ከመጀመሪያው ጀምሮ ሁኔታውን ይወስናል)
+                listenToMyAnswerStatus(); 
+                updateUserQuizState('waiting'); 
+            } else {
+                // አዲስ ጥያቄ ነው ወይም መልስ አልሰጠም
+                localStorage.removeItem('myAnswerKey');
+                myAnswerKey = null;
+                updateUserQuizState('active'); 
+            }
+        }
+
+        // ጥያቄው ሲለቀቅ/ሲቀየር የሚነሳ Listener
+        db.ref('quiz/current_question').on('value', (snapshot) => {
+            const questionEl = document.getElementById('question-text');
+            const statusEl = document.getElementById('quiz-status');
+            
+            if (snapshot.exists()) {
+                currentQuestion = snapshot.val();
+                questionEl.textContent = `❓ ጥያቄው: ${currentQuestion.question}`;
+                statusEl.className = 'alert alert-error';
+                statusEl.textContent = 'ፈጥነው ይመልሱ! መልስ ከላኩ በኋላ ማረም አይችሉም።';
+            } else {
+                currentQuestion = null;
+                questionEl.textContent = 'አዲስ ጥያቄ በመጠበቅ ላይ...';
+                statusEl.className = 'alert alert-success';
+                statusEl.textContent = 'ጥያቄው በየምሽቱ ከ2:30 እስከ 3:00 ሰዓት ይቀርባል። ይጠብቁ!';
+            }
+            
+            // የጥያቄው ዳታ ሲቀየር የተጠቃሚውን ሁኔታ ማስተካከል
+            if (document.getElementById('user-dashboard').style.display === 'block') {
+                 initializeUserDashboard();
+            }
+        });
+
+        // ገጹ ሲከፈት መጀመሪያ የሚታየው
+        window.onload = () => {
+            const isAdminLoggedIn = sessionStorage.getItem('isAdminLoggedIn') === 'true';
+            if (isAdminLoggedIn) {
+                showPage('admin-dashboard');
+                displayAnswers();
+            } else {
+                showPage('user-dashboard');
+                // initializeUserDashboard የሚጠራው በ current_question listener አማካኝነት ነው።
+            }
+        };
+
+    </script>
+</body>
+</html>
